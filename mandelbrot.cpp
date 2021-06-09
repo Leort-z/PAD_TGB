@@ -25,9 +25,16 @@ int main(int argc, char* argv[]) {
 	SDL_CreateWindowAndRenderer(1280, 720, 0, &window, &renderer);
 	SDL_RenderSetLogicalSize(renderer, WIDTH, HEIGHT);
 
+	int rank, size;
+	
+	MPI_Init(&argc, &argv);
+
 	while (true) {
 
 		SDL_RenderPresent(renderer);
+
+		MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+		MPI_Comm_size(MPI_COMM_WORLD, &size);
 
 		for (int x = 0; x < WIDTH; x++) {
 
@@ -76,7 +83,10 @@ int main(int argc, char* argv[]) {
 
 			}
 		}
+
+
 	}
+		MPI_Finalize();
 
 
 	return 0;
