@@ -4,6 +4,7 @@
 #include <unistd.h>
 
 int WINDOWSIZE = 200;
+int change;
 
 long double min = -2.0;
 long double max = 2.0;
