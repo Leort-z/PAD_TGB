@@ -7,16 +7,18 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-int NUM_THREADS_REQUIRED = 2;
-int WINDOWSIZE = 1000;
-int MAX_ITERATIONS = 100;
+const int NUM_THREADS_REQUIRED = 2;
+const bool DEBUG_CONSOLE = false;
+const char EXT[5] = ".buf";
+
+int windowSizeX = 800;
+int windowSizeY = 800;
+int maxInterations = 100;
 
 long double min = -2.0;
 long double max = 2.0;
 
-char EXT[5] = ".buf";
-
-bool DEBUG_CONSOLE = false;
+bool sleepThread = false;
 
 typedef struct workerBuffer
 {
@@ -63,10 +65,10 @@ void divThread(int sizeReal, MPI_Datatype sendType)
         rowCount = sizeReal / (int) columnCount;
     }
 
-    int lengthX = (int) WINDOWSIZE / columnCount;
-    int lengthDiffX = WINDOWSIZE - (lengthX * columnCount);
-    int lengthY = (int) WINDOWSIZE / rowCount;
-    int lengthDiffY = WINDOWSIZE - (lengthY * rowCount);
+    int lengthX = (int) windowSizeX / columnCount;
+    int lengthDiffX = windowSizeX - (lengthX * columnCount);
+    int lengthY = (int) windowSizeY / rowCount;
+    int lengthDiffY = windowSizeY - (lengthY * rowCount);
     int initialX = 0;
     int initialY = 0;
     int finalX = lengthX;
@@ -152,8 +154,8 @@ void printWindow(int sizeReal)
     SDL_Window *window;
     SDL_Renderer *renderer;
     SDL_Event event;
-    SDL_CreateWindowAndRenderer(WINDOWSIZE, WINDOWSIZE, 0, &window, &renderer);
-    SDL_RenderSetLogicalSize(renderer, WINDOWSIZE, WINDOWSIZE);
+    SDL_CreateWindowAndRenderer(windowSizeX, windowSizeY, 0, &window, &renderer);
+    SDL_RenderSetLogicalSize(renderer, windowSizeX, windowSizeY);
     SDL_SetRenderDrawColor(renderer, 200, 200, 200, 255);
     SDL_RenderClear(renderer);
     MPI_Status status;
@@ -180,7 +182,7 @@ void printWindow(int sizeReal)
         remove(name);
     }
     SDL_RenderPresent(renderer);
-    usleep(100000000);
+    usleep(10000000);
 }
 
 void slave(MPI_Datatype recType)
@@ -207,8 +209,8 @@ void slave(MPI_Datatype recType)
 
             //Mapping the size of the window to (-2.0,2.0)
 
-            long double a = map(x, 0, WINDOWSIZE, min, max); //a = x
-            long double b = map(y, 0, WINDOWSIZE, min, max); //b = y
+            long double a = map(x, 0, windowSizeX, min, max); //a = x
+            long double b = map(y, 0, windowSizeY, min, max); //b = y
 
             //Mandelbrot set
 
@@ -217,7 +219,7 @@ void slave(MPI_Datatype recType)
 
             int count = 0;
 
-            for (int i = 0; i < MAX_ITERATIONS; i++)
+            for (int i = 0; i < maxInterations; i++)
             {
                 //x^2 + 2xyi - y^2
                 long double a1 = a * a - b * b;
@@ -234,9 +236,9 @@ void slave(MPI_Datatype recType)
                 count++;
             }
 
-            int bright = map(count, 0, MAX_ITERATIONS, 0, 255);
+            int bright = map(count, 0, maxInterations, 0, 255);
 
-            if ((count == MAX_ITERATIONS) || (bright < 20))
+            if ((count == maxInterations) || (bright < 20))
             {
                 bright = 0;
             }
@@ -246,6 +248,10 @@ void slave(MPI_Datatype recType)
         }
     }
     fclose(fBuffer);
+    if (sleepThread && recv.rank % 2 == 0)
+    {
+        usleep(10000000);
+    }
     MPI_Send(&recv.rank, 1, MPI_INT, 1, 0, MPI_COMM_WORLD);
 }
 int main(int argc, char *argv[])
@@ -256,6 +262,27 @@ int main(int argc, char *argv[])
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
+
+    for(int i = 1; i < argc; i++)
+    {
+        char *param = argv[i];
+        if (strcmp(param, "-s") == 0)
+        {
+            sleepThread = true;
+        }
+        else if (strcmp(param, "-w") == 0)
+        {
+            windowSizeX = atoi(argv[++i]);
+        }
+        else if (strcmp(param, "-h") == 0)
+        {
+            windowSizeY = atoi(argv[++i]);
+        }
+        else if (strcmp(param, "-i") == 0)
+        {
+            maxInterations = atoi(argv[++i]);
+        }
+    }
 
     sizeReal = size - NUM_THREADS_REQUIRED;
 
