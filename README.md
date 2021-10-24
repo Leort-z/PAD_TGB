@@ -1,4 +1,4 @@
-# PAD_TGB
+# Fractal de Mandelbrot - Processamento de Alto Desempenho - Unicinos
 
 Instalar SDL2 e MPI
 
